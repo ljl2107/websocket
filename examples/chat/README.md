@@ -1,5 +1,5 @@
 # Chat Example
-聊天室示例
+
 This application shows how to use the
 [websocket](https://github.com/gorilla/websocket) package to implement a simple
 web chat application.
