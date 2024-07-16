@@ -69,46 +69,30 @@ hub循环通知已经注册了的客户端并且向客户端的`send`通道发�
 
 ### Client
 
-在main函数中serveWs函数被注册为一个HTTP请求处理程序
+在`main`函数中`serveWs`函数被注册为一个HTTP请求处理程序
 
 处理程序将HTTP链接升级为WebSocket协议，创建一个客户端，用hub注册客户端并且规划取消注册客户端（使用defer语句）
 
+接下来，HTTP处理程序以线程开启`writePump`方法
 
+这个方法将消息从客户端发送通道发往websocket连接
 
+当通道被关闭/出现错误，这个写方法退出
 
-Next, the HTTP handler starts the client's `writePump` method as a goroutine.
-This method transfers messages from the client's send channel to the websocket
-connection. The writer method exits when the channel is closed by the hub or
-there's an error writing to the websocket connection.
+最后，HTTP处理程序调用`readPump`方法
 
-Finally, the HTTP handler calls the client's `readPump` method. This method
-transfers inbound messages from the websocket to the hub.
+这个方法从websocket向hub发送入站消息
 
-WebSocket connections [support one concurrent reader and one concurrent
-writer](https://godoc.org/github.com/gorilla/websocket#hdr-Concurrency). The
-application ensures that these concurrency requirements are met by executing
-all reads from the `readPump` goroutine and all writes from the `writePump`
-goroutine.
+websocket[支持一个同步读和一个同步写](https://godoc.org/github.com/gorilla/websocket#hdr-Concurrency)
 
-To improve efficiency under high load, the `writePump` function coalesces
-pending chat messages in the `send` channel to a single WebSocket message. This
-reduces the number of system calls and the amount of data sent over the
-network.
+这个应用通过从`readPump`执行所有读和从`writePump`执行所有写确保了同步需求
+
+为了改善高负载下的效率，`writePump`方法将send通道中待处理的待发送消息合并成单个WebSocket消息，此举不仅减少了系统调用还减少了通过网络发送的数据量
 
 ## Frontend
 
+当document加载好后，脚本检查websocket功能。如果正常，则打开一个连接并注册一个回调处理消息的回调。该回调酱消息附加到聊天框（chat log）中
 
+为了允许用户手动滚动浏览聊天记录而不会被新消息打断，`appendLog` 函数会在添加新内容之前检查滚动位置。如果聊天记录滚动到底部，则函数会在添加内容后将新内容滚动到视图中。否则，滚动位置不会改变。
 
-On document load, the script checks for websocket functionality in the browser.
-If websocket functionality is available, then the script opens a connection to
-the server and registers a callback to handle messages from the server. The
-callback appends the message to the chat log using the appendLog function.
-
-To allow the user to manually scroll through the chat log without interruption
-from new messages, the `appendLog` function checks the scroll position before
-adding new content. If the chat log is scrolled to the bottom, then the
-function scrolls new content into view after adding the content. Otherwise, the
-scroll position is not changed.
-
-The form handler writes the user input to the websocket and clears the input
-field.
+表单处理程序将用户输入写入 websocket 并清除输入字段。
