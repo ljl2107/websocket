@@ -31,14 +31,20 @@ func newHub() *Hub {
 
 func (h *Hub) run() {
 	for {
+		// 对通道进行接收，未接收阻塞
 		select {
+		// 注册客户端，将其放入映射中
 		case client := <-h.register:
 			h.clients[client] = true
+			// 取消注册，使用ok-idiom
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
+				//  先从映射中删除，然后在关闭
+				// 否则可能会在关闭后的通道继续发送，导致panic
 				delete(h.clients, client)
 				close(client.send)
 			}
+			// 对于广播消息则将消息广播至每一个客户端
 		case message := <-h.broadcast:
 			for client := range h.clients {
 				select {

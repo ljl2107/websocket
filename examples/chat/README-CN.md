@@ -4,6 +4,9 @@ This application shows how to use the
 [websocket](https://github.com/gorilla/websocket) package to implement a simple
 web chat application.
 
+主要是通道+线程+websocket
+很巧妙的设计，让人收获颇丰
+
 ## 运行
 
 go环境准备 [Getting

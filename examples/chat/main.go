@@ -10,8 +10,10 @@ import (
 	"net/http"
 )
 
+// 可以传入参数
 var addr = flag.String("addr", ":8080", "http service address")
 
+// 路由控制
 func serveHome(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL)
 	if r.URL.Path != "/" {
@@ -25,11 +27,14 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "home.html")
 }
 
+// 主线程
 func main() {
 	flag.Parse()
 	hub := newHub()
+	// 线程1
 	go hub.run()
 	http.HandleFunc("/", serveHome)
+	// 每次新建一个页面都会新注册一个websocket
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})

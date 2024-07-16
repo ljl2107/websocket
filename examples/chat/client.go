@@ -21,6 +21,7 @@ const (
 	pongWait = 60 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
+	// 定时向其他发送
 	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer.
@@ -54,7 +55,9 @@ type Client struct {
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
 func (c *Client) readPump() {
+
 	defer func() {
+		// 结束后取消注册
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
@@ -64,11 +67,14 @@ func (c *Client) readPump() {
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
+			// 1001 终端离开, 可能因为服务端错误, 也可能因为浏览器正从打开连接的页面跳转离开。
+			// 1006 保留。 用于期望收到状态码时连接非正常关闭 (也就是说, 没有发送关闭帧)。
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
 			break
 		}
+		// 将所有的回车换为空格，再压缩左右空格
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		c.hub.broadcast <- message
 	}
@@ -87,21 +93,25 @@ func (c *Client) writePump() {
 	}()
 	for {
 		select {
+		// c.send来自广播
 		case message, ok := <-c.send:
+			// 链接过期时间 10s
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-
+			//
+			// WriteCloser is the interface that groups the basic Write and Close methods.
+			// w 可以使用基本的write和close方法
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				return
 			}
 			w.Write(message)
-
 			// Add queued chat messages to the current websocket message.
+			// 前端可能传过来不止一行
 			n := len(c.send)
 			for i := 0; i < n; i++ {
 				w.Write(newline)
@@ -113,6 +123,7 @@ func (c *Client) writePump() {
 			}
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			// 定时任务定时去发ping包
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -120,7 +131,7 @@ func (c *Client) writePump() {
 	}
 }
 
-// serveWs handles websocket requests from the peer.
+// serveWs 处理 websocket requests from the peer.
 func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -128,10 +139,12 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
+	// 注册，在hub中select选择
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
+	// 线程2，3
 	go client.writePump()
 	go client.readPump()
 }

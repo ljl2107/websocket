@@ -27,8 +27,9 @@ window.onload = function () {
         msg.value = "";
         return false;
     };
-
+// 是否支持websocket
     if (window["WebSocket"]) {
+        // demo ws://localhost:8080/ws GET 101
         conn = new WebSocket("ws://" + document.location.host + "/ws");
         conn.onclose = function (evt) {
             var item = document.createElement("div");
@@ -36,6 +37,7 @@ window.onload = function () {
             appendLog(item);
         };
         conn.onmessage = function (evt) {
+        // 回车直接输出，此处的分割无用
             var messages = evt.data.split('\n');
             for (var i = 0; i < messages.length; i++) {
                 var item = document.createElement("div");
@@ -62,7 +64,7 @@ window.onload = function () {
         padding: 20px; /* 为页面添加一些内边距 */  
         box-sizing: border-box; /* 确保内边距不会增加总宽度 */  
     }  
-    
+
     #form {  
         background-color: #fff;  
         padding: 20px;  
