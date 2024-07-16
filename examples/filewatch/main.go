@@ -20,10 +20,13 @@ const (
 	// Time allowed to write the file to the client.
 	writeWait = 10 * time.Second
 
+	// 控制心跳机制
 	// Time allowed to read the next pong message from the client.
 	pongWait = 60 * time.Second
 
 	// Send pings to client with this period. Must be less than pongWait.
+	// 为什么小于呢
+	//这是为了确保在服务器等待pong响应超时之前，有足够的时间发送下一个ping消息。这样做可以避免在发送ping消息后立即因超时而错误地认为连接已断开。同时，这也为网络延迟和客户端处理时间提供了一定的缓冲。
 	pingPeriod = (pongWait * 9) / 10
 
 	// Poll file for changes with this period.
@@ -31,6 +34,7 @@ const (
 )
 
 var (
+	// 命令行解析的参数
 	addr      = flag.String("addr", ":8080", "http service address")
 	homeTempl = template.Must(template.New("").Parse(homeHTML))
 	filename  string
@@ -161,6 +165,7 @@ func main() {
 	}
 	filename = flag.Args()[0]
 	http.HandleFunc("/", serveHome)
+	// 依然是创建socket链接
 	http.HandleFunc("/ws", serveWs)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
 		log.Fatal(err)
