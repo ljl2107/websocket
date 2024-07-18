@@ -27,6 +27,7 @@ const (
 	// Send pings to client with this period. Must be less than pongWait.
 	// 为什么小于呢
 	//这是为了确保在服务器等待pong响应超时之前，有足够的时间发送下一个ping消息。这样做可以避免在发送ping消息后立即因超时而错误地认为连接已断开。同时，这也为网络延迟和客户端处理时间提供了一定的缓冲。
+	// pong = 60 ping = 54 , 6s足够了，也就是说60s可以ping两次
 	pingPeriod = (pongWait * 9) / 10
 
 	// Poll file for changes with this period.
@@ -35,20 +36,32 @@ const (
 
 var (
 	// 命令行解析的参数
-	addr      = flag.String("addr", ":8080", "http service address")
+	addr = flag.String("addr", ":8080", "http service address")
+	// html模版
 	homeTempl = template.Must(template.New("").Parse(homeHTML))
 	filename  string
-	upgrader  = websocket.Upgrader{
+	// 用于HTTP升级
+	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
 )
 
 func readFileIfModified(lastMod time.Time) ([]byte, time.Time, error) {
+	// // A FileInfo describes a file and is returned by [Stat].
+	// type FileInfo interface {
+	// 	Name() string       // base name of the file
+	// 	Size() int64        // length in bytes for regular files; system-dependent for others
+	// 	Mode() FileMode     // file mode bits
+	// 	ModTime() time.Time // 修改时间
+	// 	IsDir() bool        // abbreviation for Mode().IsDir()
+	// 	Sys() any           // underlying data source (can return nil)
+	// }
 	fi, err := os.Stat(filename)
 	if err != nil {
 		return nil, lastMod, err
 	}
+	// 如果修改时间在lastMod时间之前，直接返回
 	if !fi.ModTime().After(lastMod) {
 		return nil, lastMod, nil
 	}
@@ -141,7 +154,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	p, lastMod, err := readFileIfModified(time.Time{})
+	p, lastMod, err := readFileIfModified(time.Time{}) // 这里的时间一定是修改时间之前啊？
 	if err != nil {
 		p = []byte(err.Error())
 		lastMod = time.Unix(0, 0)
@@ -155,6 +168,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 		string(p),
 		strconv.FormatInt(lastMod.UnixNano(), 16),
 	}
+	// 模版解析主要看的是Data数据
 	homeTempl.Execute(w, &v)
 }
 
@@ -163,6 +177,7 @@ func main() {
 	if flag.NArg() != 1 {
 		log.Fatal("filename not specified")
 	}
+	// 传输的文件
 	filename = flag.Args()[0]
 	http.HandleFunc("/", serveHome)
 	// 依然是创建socket链接
@@ -172,6 +187,11 @@ func main() {
 	}
 }
 
+// raw html
+// 0. 获取数据展示块
+// 1. 开启ws链接
+// 2. 绑定断开回调（前端展示“链接关闭”）
+// 3. 绑定获取消息回调
 const homeHTML = `<!DOCTYPE html>
 <html lang="en">
     <head>

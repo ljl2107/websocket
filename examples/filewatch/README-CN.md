@@ -17,3 +17,10 @@
     # Modify the file to see it update in the browser.
 
 http://localhost:8080/ 
+
+## html
+
+0. 获取数据展示块
+1. 开启ws链接
+2. 绑定断开回调（前端展示“链接关闭”）
+3. 绑定获取消息回调

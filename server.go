@@ -22,8 +22,9 @@ func (e HandshakeError) Error() string { return e.message }
 
 // Upgrader specifies parameters for upgrading an HTTP connection to a
 // WebSocket connection.
-//
+// 将HTTP升级成WebSocket的参数
 // It is safe to call Upgrader's methods concurrently.
+// 并发安全
 type Upgrader struct {
 	// HandshakeTimeout specifies the duration for the handshake to complete.
 	HandshakeTimeout time.Duration
@@ -32,6 +33,10 @@ type Upgrader struct {
 	// size is zero, then buffers allocated by the HTTP server are used. The
 	// I/O buffer sizes do not limit the size of the messages that can be sent
 	// or received.
+	// 设定缓冲区的大小
+	// 如果为0，则缓冲区为HTTP服务器所能使用的缓冲区大小
+	// 缓冲区大小不会影响可接受/可发送的消息大小
+	// 单位应当是：M
 	ReadBufferSize, WriteBufferSize int
 
 	// WriteBufferPool is a pool of buffers for write operations. If the value
@@ -370,4 +375,3 @@ func (b *brNetConn) Read(p []byte) (n int, err error) {
 func (b *brNetConn) NetConn() net.Conn {
 	return b.Conn
 }
-
